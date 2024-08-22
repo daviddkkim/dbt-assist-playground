@@ -70,6 +70,14 @@ const ELEMENTS = [
   },
 ];
 
+
+interface FileNode {
+  id: string;
+  name: string;
+  type: 'file' | 'directory';
+  children?: FileNode[];
+}
+
 export default function Home() {
   // Store editor reference
   const editorRef = useRef<editor.IStandaloneCodeEditor>();
@@ -94,9 +102,42 @@ export default function Home() {
   const [chat, setChat] = useState([]);
   const [textInput, setTextInput] = useState("");
   const { messages, input, handleInputChange, handleSubmit, setInput } = useChat();
+
+
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     setInput(chat.toString() + "\n\n" + textInput);
   }, [chat, textInput])
+
+
+  useEffect(() => {
+    fetch('/api/file-tree')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch file tree');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setFileTree(data);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching file tree:', error);
+        setError('Failed to load file tree');
+      });
+  }, []);
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  console.log(fileTree)
 
   return (
     <main className="h-screen overflow-hidden">
@@ -110,51 +151,20 @@ export default function Home() {
               <AccordionTrigger className="px-4 py-2">Files</AccordionTrigger>
               <AccordionContent className="px-4">
                 <Tree
-                  className="p-2 overflow-hidden rounded-md bg-background"
-                  initialSelectedId="7"
-                  initialExpandedItems={[
-                    "1",
-                    "2",
-                    "3",
-                    "4",
-                    "5",
-                    "6",
-                    "7",
-                    "8",
-                    "9",
-                    "10",
-                    "11",
-                  ]}
-                  elements={ELEMENTS}
+                  className="overflow-hidden rounded-md"
+                  elements={fileTree}
                 >
-                  <Folder element="src" value="1">
-                    <Folder value="2" element="app">
-                      <File value="3">
-                        <p>layout.tsx</p>
-                      </File>
-                      <File value="4">
-                        <p>page.tsx</p>
-                      </File>
-                    </Folder>
-                    <Folder value="5" element="components">
-                      <Folder value="6" element="ui">
-                        <File value="7">
-                          <p>button.tsx</p>
+                  {fileTree.map((file) => {
+                    if (file.type === 'file') {
+                      return (
+                        <File key={file.id} value={file.id}>
+                          <p>{file.name}</p>
                         </File>
-                      </Folder>
-                      <File value="8">
-                        <p>header.tsx</p>
-                      </File>
-                      <File value="9">
-                        <p>footer.tsx</p>
-                      </File>
-                    </Folder>
-                    <Folder value="10" element="lib">
-                      <File value="11">
-                        <p>utils.ts</p>
-                      </File>
-                    </Folder>
-                  </Folder>
+                      )
+                    }
+                    return <Folder key={file.id} value={file.id} element={file.name}></Folder>
+                  })}
+
                 </Tree>
               </AccordionContent>
             </AccordionItem>
