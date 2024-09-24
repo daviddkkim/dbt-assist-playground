@@ -1,11 +1,15 @@
 "use client"
 
+
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import { type editor } from 'monaco-editor';
 import { useEffect, useRef, useState } from "react";
-import { CodeEditor } from "@/components/ui/editor";
+import dynamic from 'next/dynamic';
 import { Folder, Tree, File } from "@/components/ui/filetree";
+
+// Dynamically import CodeEditor with ssr option set to false
+const CodeEditor = dynamic(() => import("@/components/ui/editor").then((mod) => mod.CodeEditor), { ssr: false });
 
 interface FileNode {
   id: string;
