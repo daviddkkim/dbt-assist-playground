@@ -3,15 +3,11 @@
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import { Monaco } from '@monaco-editor/react';
-import { Input } from "@/components/ui/input";
 import { useChat } from 'ai/react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { type editor } from 'monaco-editor';
 import { useEffect, useRef, useState } from "react";
 import { CodeEditor } from "@/components/ui/editor";
-import PromptItem from "@/components/ui/promptItem";
 import { Folder, Tree, File } from "@/components/ui/filetree";
-import { SQLBlock } from "@/components/ui/sql";
 
 interface FileNode {
   id: string;
@@ -97,7 +93,6 @@ export default function Home() {
       );
     });
   }
-  console.log(fileTree)
 
   return (
     <main className="h-screen overflow-hidden">
@@ -118,45 +113,11 @@ export default function Home() {
                 </Tree>
               </AccordionContent>
             </AccordionItem>
-
           </Accordion>
         </Panel>
         <PanelResizeHandle className="border-l" />
-        <Panel minSize={30} >
+        <Panel minSize={85} >
           <CodeEditor />
-        </Panel>
-        <PanelResizeHandle className="border-l" />
-        <Panel defaultSize={30} minSize={30}>
-          <div className="px-4 py-2 border-b">
-            <span className="text-sm font-medium">Chat</span>
-          </div>
-          <ScrollArea >
-            <div className="flex flex-col w-full max-w-md max-h-[calc(100vh-86px)] py-2 px-4 gap-2 mx-auto">
-              {chat.map(m => (
-                <pre className="border rounded-md p-2 text-xs bg-secondary/50">{m}</pre>
-              ))}
-              {messages.map(m => (
-                <div key={m.id} className="whitespace-pre-wrap">
-                  {m.role === 'user' ?
-                    <PromptItem context={chat} message={textInput} />
-
-                    : <>
-                      <div className="px-2 py-1 border bg-primary text-primary-foreground rounded-md w-fit text-xs">AI</div>
-                      <SQLBlock text={m.content} applyFunction={setEditedCode} /></>}
-
-                </div>
-              ))}
-
-              <form onSubmit={handleSubmit} className="py-1">
-                <Input
-                  value={textInput}
-                  placeholder="Ask me anything..."
-                  onChange={(e) => setTextInput(e.target.value)}
-                />
-              </form>
-            </div>
-          </ScrollArea>
-
         </Panel>
       </PanelGroup>
     </main>
