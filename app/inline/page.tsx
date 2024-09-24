@@ -2,16 +2,12 @@
 
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
-import Editor, { DiffEditor, useMonaco, loader, Monaco } from '@monaco-editor/react';
-import { Input } from "@/components/ui/input";
+import { Monaco } from '@monaco-editor/react';
 import { useChat } from 'ai/react';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { type editor } from 'monaco-editor';
 import { useEffect, useRef, useState } from "react";
 import { CodeEditor } from "@/components/ui/editor";
-import PromptItem from "@/components/ui/promptItem";
 import { Folder, Tree, File } from "@/components/ui/filetree";
-import { SQLBlock } from "@/components/ui/sql";
 
 interface FileNode {
   id: string;
@@ -82,7 +78,7 @@ export default function Home() {
 
 
   const renderFileTree = (nodes: FileNode[]) => {
-    return nodes.map((file,i) => {
+    return nodes.map((file, i) => {
       if (file.type === 'file') {
         return (
           <File key={i} value={i.toString()}>
@@ -92,7 +88,7 @@ export default function Home() {
       }
       return (
         <Folder key={file.id} value={file.id} element={file.name}>
-          {file.children && file.children.length > 0 && renderFileTree(file.children)} 
+          {file.children && file.children.length > 0 && renderFileTree(file.children)}
         </Folder>
       );
     });
@@ -113,7 +109,7 @@ export default function Home() {
                   className="overflow-hidden rounded-md"
                   elements={fileTree}
                 >
-               {renderFileTree(fileTree)}
+                  {renderFileTree(fileTree)}
                 </Tree>
               </AccordionContent>
             </AccordionItem>
@@ -121,7 +117,7 @@ export default function Home() {
         </Panel>
         <PanelResizeHandle className="border-l" />
         <Panel minSize={85} >
-          <CodeEditor chat={chat} setChat={setChat} editedCode={editedCode} setEditedCode={setEditedCode} />
+          <CodeEditor />
         </Panel>
       </PanelGroup>
     </main>

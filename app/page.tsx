@@ -2,7 +2,7 @@
 
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
-import Editor, { DiffEditor, useMonaco, loader, Monaco } from '@monaco-editor/react';
+import { Monaco } from '@monaco-editor/react';
 import { Input } from "@/components/ui/input";
 import { useChat } from 'ai/react';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,7 +82,7 @@ export default function Home() {
 
 
   const renderFileTree = (nodes: FileNode[]) => {
-    return nodes.map((file,i) => {
+    return nodes.map((file, i) => {
       if (file.type === 'file') {
         return (
           <File key={i} value={i.toString()}>
@@ -92,7 +92,7 @@ export default function Home() {
       }
       return (
         <Folder key={file.id} value={file.id} element={file.name}>
-          {file.children && file.children.length > 0 && renderFileTree(file.children)} 
+          {file.children && file.children.length > 0 && renderFileTree(file.children)}
         </Folder>
       );
     });
@@ -114,7 +114,7 @@ export default function Home() {
                   className="overflow-hidden rounded-md"
                   elements={fileTree}
                 >
-               {renderFileTree(fileTree)}
+                  {renderFileTree(fileTree)}
                 </Tree>
               </AccordionContent>
             </AccordionItem>
@@ -123,7 +123,7 @@ export default function Home() {
         </Panel>
         <PanelResizeHandle className="border-l" />
         <Panel minSize={30} >
-          <CodeEditor chat={chat} setChat={setChat} editedCode={editedCode} setEditedCode={setEditedCode} />
+          <CodeEditor />
         </Panel>
         <PanelResizeHandle className="border-l" />
         <Panel defaultSize={30} minSize={30}>
@@ -142,7 +142,7 @@ export default function Home() {
 
                     : <>
                       <div className="px-2 py-1 border bg-primary text-primary-foreground rounded-md w-fit text-xs">AI</div>
-                      <SQLBlock text={m.content} applyFunction={setEditedCode}/></>}
+                      <SQLBlock text={m.content} applyFunction={setEditedCode} /></>}
 
                 </div>
               ))}

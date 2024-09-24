@@ -1,12 +1,10 @@
 import { DiffEditor } from '@monaco-editor/react';
 import React, { useState, useRef } from 'react';
-import MonacoEditor, { MonacoDiffEditor } from 'react-monaco-editor';
-import { Button } from './button';
-import { openai } from '@ai-sdk/openai';
-import { getAnswer } from '@/app/generateAnswer';
+import MonacoEditor from 'react-monaco-editor';
+import { getNewGenAnswer, getEditAnswer } from '@/app/generateAnswer';
 import { getCodeAboveAndBelow } from '@/lib/splitCodeFile';
 
-export const CodeEditor = ({ chat, setChat, editedCode, setEditedCode }) => {
+export const CodeEditor = ({ }) => {
 
 
   const [code, setCode] = useState(`
@@ -60,8 +58,6 @@ final as (
 )
 
 select * from final
-   
-    
     `);
 
   const [genCode, setGenCode] = useState("")
@@ -72,22 +68,189 @@ select * from final
   const editorRef = useRef(null);
 
   const onChange = (newValue) => {
-    console.log('onChange', newValue);
     setCode(newValue);
   };
 
   const editorDidMount = (editor) => {
-    console.log('editorDidMount', editor, editor.getValue(), editor.getModel());
     editorRef.current = editor;
     bindEditorEvent(editor);
-    addWidgets(editor);
   };
 
   const bindEditorEvent = (editor) => {
     editor.onDidChangeCursorPosition((evt) => {
+      editor.removeContentWidget({
+        getId: () => 'selectionwidget',
+      });
       const { position } = evt;
-      console.log('cursor position:', position);
-      addWidgets(editor, { ...position });
+      if (getSelection(editor).length < 1) {
+        if (editor.getModel().getLineContent(evt.position.lineNumber).trim().length === 0) {
+          editor.addContentWidget({
+            getDomNode: () => {
+              var viewZoneId = null;
+              if (document.getElementById('editor_widget_container')) {
+                return document.getElementById('editor_widget_container');
+              }
+              const container = document.createElement('div');
+              container.id = 'editor_widget_container';
+              container.style.cssText = `
+            display:flex;
+            border-radius: 6px;
+            padding-left: 24px;
+            `
+              container.style.display = 'flex';
+              container.style.gap = '5px';
+
+              const createButton = (text, onClick) => {
+                const button = document.createElement('button');
+                button.onclick = onClick;
+                button.innerHTML = text;
+                button.style.cssText = `
+                font-size: 12px;
+                line-height: 20px;
+                background: transparent;
+                color: #9CA3AF;
+                padding: 0px;
+                border:none;
+                outline: none;
+
+                transition: background-color 0.3s ease;
+              `;
+                button.onmouseover = () => {
+                  button.style.color = '#4B5563';
+                };
+                button.onmouseout = () => {
+                  button.style.color = '#9CA3AF';
+                };
+                return button;
+              };
+
+              /* 
+                      const addToChatButton = createButton('Add to chat (⌘+k)', () => {
+                        const selection = getSelection(editor);
+                        setChat(prevChat => [...prevChat, selection]);
+                      }); */
+
+              const explainCodeButton = createButton('Generate', () => {
+                editor.changeViewZones(function (changeAccessor) {
+                  if (viewZoneId !== null) {
+                    changeAccessor.removeZone(viewZoneId);
+                  }
+                  var domNode = document.createElement("div");
+                  const id = changeAccessor.addZone({
+                    afterLineNumber: editor.getSelection().startLineNumber - 1,
+                    heightInLines: 4,
+                    domNode: domNode,
+                  });
+                  viewZoneId = id;
+                });
+                editor.addContentWidget({
+                  allowEditorOverflow: true,
+                  getDomNode: () => {
+                    if (document.getElementById('editor_widget_container_2')) {
+                      return document.getElementById('editor_widget_container_2');
+                    }
+                    const container = document.createElement('div');
+                    container.id = 'editor_widget_container_2';
+                    container.style.cssText = `
+                  display:flex;
+                  border: 1px solid #d5d5d5;
+                  background-color: white;
+                  border-radius: 6px;
+                  width: 320px;
+                  padding: 4px;
+                  `
+                    container.style.display = 'flex';
+                    container.style.gap = '5px';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = 'Enter your prompt';
+                    input.style.cssText = `
+                    flex: 1;
+                    font-size: 12px;
+                    height: 30px;
+                    width: 100%;
+                    border-radius: 6px;
+                    padding: 2px 4px;
+                  `;
+                    const button2 = document.createElement('button');
+                    button2.innerHTML = 'Generate';
+                    button2.style.cssText = `
+                    margin-top: 4px;
+                    background-color: #FF694A;
+                    color: white;
+                    font-size: 12px;
+                    line-height: 20px;
+                    border-radius: 6px;
+                    padding: 2px 8px;
+                    transition: background-color 0.3s ease;
+                  `;
+                    button2.onclick = async () => {
+                      const promptText = input.value.trim();
+                      if (promptText) {
+                        const selectionRange = editor.getSelection(); // Get selection range
+
+                        const startLine = selectionRange.startLineNumber; // Start line number
+                        const endLine = selectionRange.endLineNumber; // End line number
+                        const { prefix, suffix } = getCodeAboveAndBelow(editor, startLine, endLine);
+                        const { text } = await getNewGenAnswer({
+                          prefix: prefix,
+                          suffix: suffix,
+                          promptText: promptText
+                        });
+                        setGenCode(text);
+                        setSuffixAndPrefix({
+                          suffix: suffix,
+                          prefix: prefix
+                        })
+                        console.log(text)
+                      } else {
+                        console.log('Please enter a prompt before generating');
+                      }
+                    };
+                    button2.onmouseover = () => {
+                      button2.style.backgroundColor = '#FF4A2C';
+                    };
+                    button2.onmouseout = () => {
+                      button2.style.backgroundColor = '#FF694A';
+                    };
+
+
+                    container.appendChild(input);
+                    container.appendChild(button2);
+
+                    return container;
+                  },
+                  getId: () => 'editPrompt',
+                  getPosition: () => ({
+                    position: { column: 1, lineNumber: editor.getSelection().startLineNumber }, // Use the current cursor position
+                    preference: [1, 2]
+                  })
+                });
+              });
+
+              container.appendChild(explainCodeButton);
+
+              return container;
+            },
+            getId: () => 'inlineGen',
+            getPosition: () => ({
+              position: { column: 1, lineNumber: position.lineNumber+1 }, // Use the current cursor position
+              preference: [1, 2]
+            })
+
+          })
+        }
+      }
+    });
+
+    editor.onDidChangeCursorSelection((evt) => {
+      // Handle cursor selection change event
+      const { selection } = evt;
+      if (selection.endColumn !== selection.startColumn || selection.endLine !== selection.startLine) {
+        addWidgets(editor, { ...selection });
+      }
+
     });
   };
   const getSelection = (editor) => {
@@ -95,10 +258,12 @@ select * from final
     return editor.getModel().getValueInRange(selection).trim();
   };
 
-  const addWidgets = (editor, position = { column: 1, lineNumber: 1 }) => {
+  const addWidgets = (editor, position = { endColumn: 1, endLineNumber: 1, positionColumn: 1, positionLineNumber: 1, selectionStartColumn: 1, selectionStartLineNumber: 1, startColumn: 1, startLineNumber: 1 }) => {
+
     editor.addContentWidget({
       allowEditorOverflow: true,
       getDomNode: () => {
+        var viewZoneId = null;
         if (document.getElementById('editor_widget_container')) {
           return document.getElementById('editor_widget_container');
         }
@@ -133,12 +298,25 @@ select * from final
           return button;
         };
 
-        const addToChatButton = createButton('Add to chat (⌘+k)', () => {
-          const selection = getSelection(editor);
-          setChat(prevChat => [...prevChat, selection]);
-        });
+        /* 
+                const addToChatButton = createButton('Add to chat (⌘+k)', () => {
+                  const selection = getSelection(editor);
+                  setChat(prevChat => [...prevChat, selection]);
+                }); */
 
-        const explainCodeButton = createButton('Generate (⌘+g)', () => {
+        const explainCodeButton = createButton('Edit', () => {
+          editor.changeViewZones(function (changeAccessor) {
+            if (viewZoneId !== null) {
+              changeAccessor.removeZone(viewZoneId);
+            }
+            var domNode = document.createElement("div");
+            const id = changeAccessor.addZone({
+              afterLineNumber: editor.getSelection().startLineNumber - 1,
+              heightInLines: 4,
+              domNode: domNode,
+            });
+            viewZoneId = id;
+          });
           editor.addContentWidget({
             allowEditorOverflow: true,
             getDomNode: () => {
@@ -152,6 +330,8 @@ select * from final
               border: 1px solid #d5d5d5;
               background-color: white;
               border-radius: 6px;
+              width: 320px;
+              padding: 4px;
               `
               container.style.display = 'flex';
               container.style.gap = '5px';
@@ -164,17 +344,19 @@ select * from final
                 font-size: 12px;
                 height: 30px;
                 width: 100%;
-                              border-radius: 6px;
+                border-radius: 6px;
                 padding: 2px 4px;
               `;
               const button2 = document.createElement('button');
               button2.innerHTML = 'Generate';
               button2.style.cssText = `
+                margin-top: 4px;
+                background-color: #FF694A;
+                color: white;
                 font-size: 12px;
                 line-height: 20px;
-                background: white;
                 border-radius: 6px;
-                padding: 1px 4px;
+                padding: 2px 8px;
                 transition: background-color 0.3s ease;
               `;
               button2.onclick = async () => {
@@ -185,16 +367,8 @@ select * from final
 
                   const startLine = selectionRange.startLineNumber; // Start line number
                   const endLine = selectionRange.endLineNumber; // End line number
-
-
-
                   const { prefix, suffix } = getCodeAboveAndBelow(editor, startLine, endLine);
-
-                  console.log('here')
-
-
-                  console.log(prompt)
-                  const { text } = await getAnswer({
+                  const { text } = await getEditAnswer({
                     prefix: prefix,
                     suffix: suffix,
                     selection: selection,
@@ -211,10 +385,10 @@ select * from final
                 }
               };
               button2.onmouseover = () => {
-                button2.style.backgroundColor = '#f0f0f0';
+                button2.style.backgroundColor = '#FF4A2C';
               };
               button2.onmouseout = () => {
-                button2.style.backgroundColor = 'white';
+                button2.style.backgroundColor = '#FF694A';
               };
 
 
@@ -223,22 +397,24 @@ select * from final
 
               return container;
             },
-            getId: () => 'editor.author.avatar.widget',
+            getId: () => 'editPrompt',
             getPosition: () => ({
-              position: editor.getPosition(), // Use the current cursor position
+              position: { column: 1, lineNumber: editor.getSelection().startLineNumber }, // Use the current cursor position
               preference: [1, 2]
             })
           });
         });
 
-        container.appendChild(addToChatButton);
         container.appendChild(explainCodeButton);
 
         return container;
       },
-      getId: () => 'editor.author.avatar.widget',
+      getId: () => 'selectionwidget',
       getPosition: () => ({
-        position: position,
+        position: {
+          lineNumber: position.positionLineNumber,
+          column: position.positionColumn
+        },
         preference: [1, 2]
       })
     });
@@ -264,9 +440,6 @@ select * from final
             modified={suffixAndPrefix.prefix + '\n' + genCode + '\n' + suffixAndPrefix.suffix}
             options={{ renderSideBySide: false }}
           />
-          <Button size="sm" variant={"ghost"} className='absolute top-4 right-4' onClick={() => {
-            setEditedCode("")
-          }}> reject</Button>
         </> : <MonacoEditor
           width="1264px"
           language="sql"
