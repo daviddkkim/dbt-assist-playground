@@ -2,8 +2,6 @@
 
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
-import { Monaco } from '@monaco-editor/react';
-import { useChat } from 'ai/react';
 import { type editor } from 'monaco-editor';
 import { useEffect, useRef, useState } from "react";
 import { CodeEditor } from "@/components/ui/editor";
@@ -20,35 +18,12 @@ export default function Home() {
   // Store editor reference
   const editorRef = useRef<editor.IStandaloneCodeEditor>();
 
-  const handleEditorDidMount = (editor: editor.IStandaloneCodeEditor, _monacoInstance: Monaco): void => {
-    editorRef.current = editor;
-  }
-
   editorRef.current?.onDidChangeCursorSelection((e) => {
     console.log(e.selection)
   })
 
-  const getSelection = (): string => {
-    if (editorRef.current) {
-      return editorRef.current
-        .getModel()!
-        .getValueInRange(editorRef.current.getSelection()!)
-    } else {
-      return "";
-    }
-  }
-  const [chat, setChat] = useState([]);
-  const [textInput, setTextInput] = useState("");
-  const { messages, input, handleInputChange, handleSubmit, setInput } = useChat();
-
-  const [editedCode, setEditedCode] = useState("")
-
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setInput(chat.toString() + "\n\n" + textInput);
-  }, [chat, textInput])
 
 
   useEffect(() => {
