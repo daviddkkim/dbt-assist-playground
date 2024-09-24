@@ -77,6 +77,7 @@ select * from final
   };
 
   const bindEditorEvent = (editor) => {
+    var viewZoneIdInline = null;
     editor.onDidChangeCursorPosition((evt) => {
       editor.removeContentWidget({
         getId: () => 'selectionwidget',
@@ -86,7 +87,6 @@ select * from final
         if (editor.getModel().getLineContent(evt.position.lineNumber).trim().length === 0) {
           editor.addContentWidget({
             getDomNode: () => {
-              var viewZoneId = null;
               if (document.getElementById('editor_widget_container')) {
                 return document.getElementById('editor_widget_container');
               }
@@ -126,16 +126,23 @@ select * from final
 
               const explainCodeButton = createButton('Generate', () => {
                 editor.changeViewZones(function (changeAccessor) {
-                  if (viewZoneId !== null) {
-                    changeAccessor.removeZone(viewZoneId);
+                  if (viewZoneIdSelection !== null) {
+                    changeAccessor.removeZone(viewZoneIdSelection);
                   }
+                  if (viewZoneIdInline !== null) {
+                    changeAccessor.removeZone(viewZoneIdInline)
+  
+                  }
+                  editor.removeContentWidget({
+                    getId: () => 'inlineGen',
+                  });
                   var domNode = document.createElement("div");
                   const id = changeAccessor.addZone({
                     afterLineNumber: editor.getSelection().startLineNumber - 1,
                     heightInLines: 4,
                     domNode: domNode,
                   });
-                  viewZoneId = id;
+                  viewZoneIdInline = id;
                 });
                 editor.addContentWidget({
                   allowEditorOverflow: true,
@@ -246,11 +253,175 @@ select * from final
       }
     });
 
+    var viewZoneIdSelection = null;
     editor.onDidChangeCursorSelection((evt) => {
       // Handle cursor selection change event
       const { selection } = evt;
       if (selection.endColumn !== selection.startColumn || selection.endLine !== selection.startLine) {
-        addWidgets(editor, { ...selection });
+
+        editor.addContentWidget({
+          allowEditorOverflow: true,
+          getDomNode: () => {
+            if (document.getElementById('editor_widget_container')) {
+              return document.getElementById('editor_widget_container');
+            }
+            const container = document.createElement('div');
+            container.id = 'editor_widget_container';
+            container.style.cssText = `
+        display:flex;
+        border: 1px solid #d5d5d5;
+        border-radius: 6px;
+        `
+            container.style.display = 'flex';
+            container.style.gap = '5px';
+
+            const createButton = (text, onClick) => {
+              const button = document.createElement('button');
+              button.onclick = onClick;
+              button.innerHTML = text;
+              button.style.cssText = `
+            font-size: 12px;
+            line-height: 20px;
+            background: white;
+            border-radius: 6px;
+            padding: 4px 8px;
+            transition: background-color 0.3s ease;
+          `;
+              button.onmouseover = () => {
+                button.style.backgroundColor = '#f0f0f0';
+              };
+              button.onmouseout = () => {
+                button.style.backgroundColor = 'white';
+              };
+              return button;
+            };
+            const explainCodeButton = createButton('Edit', () => {
+              editor.changeViewZones(function (changeAccessor) {
+                if (viewZoneIdSelection !== null) {
+                  changeAccessor.removeZone(viewZoneIdSelection);
+                }
+                if (viewZoneIdInline !== null) {
+                  changeAccessor.removeZone(viewZoneIdInline)
+
+                }
+
+                var domNode = document.createElement("div");
+                const id = changeAccessor.addZone({
+                  afterLineNumber: editor.getSelection().startLineNumber - 1,
+                  heightInLines: 4,
+                  domNode: domNode,
+                });
+                viewZoneIdSelection = id;
+              });
+              editor.addContentWidget({
+                allowEditorOverflow: true,
+                getDomNode: () => {
+                  if (document.getElementById('editor_widget_container_2')) {
+                    return document.getElementById('editor_widget_container_2');
+                  }
+                  const container = document.createElement('form');
+                  container.id = 'editor_widget_container_2';
+                  container.style.cssText = `
+              display:flex;
+              border: 1px solid #d5d5d5;
+              background-color: white;
+              border-radius: 6px;
+              width: 320px;
+              padding: 4px;
+              `
+                  container.style.display = 'flex';
+                  container.style.gap = '5px';
+
+                  const input = document.createElement('input');
+                  input.type = 'text';
+                  input.placeholder = 'Enter your prompt';
+                  input.style.cssText = `
+                flex: 1;
+                font-size: 12px;
+                height: 30px;
+                width: 100%;
+                border-radius: 6px;
+                padding: 2px 4px;
+              `;
+                  const button2 = document.createElement('button');
+                  button2.innerHTML = 'Generate';
+                  button2.type = "submit"
+                  button2.style.cssText = `
+                margin-top: 4px;
+                background-color: #FF694A;
+                color: white;
+                font-size: 12px;
+                line-height: 20px;
+                border-radius: 6px;
+                padding: 2px 8px;
+                transition: background-color 0.3s ease;
+              `;
+                  const handleSubmit = async (event) => {
+                    event.preventDefault();
+                    const button = event.target.querySelector('button');
+                    button.disabled = true;
+                    button.innerHTML = 'Generating...';
+                    button.style.backgroundColor = '#cccccc';
+
+                    const promptText = input.value.trim();
+                    if (promptText) {
+                      const selection = getSelection(editor);
+                      const selectionRange = editor.getSelection(); // Get selection range
+
+                      const startLine = selectionRange.startLineNumber; // Start line number
+                      const endLine = selectionRange.endLineNumber; // End line number
+                      const { prefix, suffix } = getCodeAboveAndBelow(editor, startLine, endLine);
+                      const { text } = await getEditAnswer({
+                        prefix: prefix,
+                        suffix: suffix,
+                        selection: selection,
+                        promptText: promptText
+                      });
+                      setGenCode(text);
+                      setSuffixAndPrefix({
+                        suffix: suffix,
+                        prefix: prefix
+                      })
+                      console.log(text)
+                    } else {
+                      console.log('Please enter a prompt before generating');
+                    }
+                  };
+                  button2.onmouseover = () => {
+                    button2.style.backgroundColor = '#FF4A2C';
+                  };
+                  button2.onmouseout = () => {
+                    button2.style.backgroundColor = '#FF694A';
+                  };
+
+                  container.onsubmit = handleSubmit;
+
+                  container.appendChild(input);
+                  container.appendChild(button2);
+
+                  return container;
+                },
+                getId: () => 'editPrompt',
+                getPosition: () => ({
+                  position: { column: 1, lineNumber: editor.getSelection().startLineNumber }, // Use the current cursor position
+                  preference: [1, 2]
+                })
+              });
+            });
+
+            container.appendChild(explainCodeButton);
+
+            return container;
+          },
+          getId: () => 'selectionwidget',
+          getPosition: () => ({
+            position: {
+              lineNumber: selection.positionLineNumber,
+              column: selection.positionColumn
+            },
+            preference: [1, 2]
+          })
+        });
       }
 
     });
@@ -262,172 +433,6 @@ select * from final
 
   const addWidgets = (editor, position = { endColumn: 1, endLineNumber: 1, positionColumn: 1, positionLineNumber: 1, selectionStartColumn: 1, selectionStartLineNumber: 1, startColumn: 1, startLineNumber: 1 }) => {
 
-    editor.addContentWidget({
-      allowEditorOverflow: true,
-      getDomNode: () => {
-        var viewZoneId = null;
-        if (document.getElementById('editor_widget_container')) {
-          return document.getElementById('editor_widget_container');
-        }
-        const container = document.createElement('div');
-        container.id = 'editor_widget_container';
-        container.style.cssText = `
-        display:flex;
-        border: 1px solid #d5d5d5;
-        border-radius: 6px;
-        `
-        container.style.display = 'flex';
-        container.style.gap = '5px';
-
-        const createButton = (text, onClick) => {
-          const button = document.createElement('button');
-          button.onclick = onClick;
-          button.innerHTML = text;
-          button.style.cssText = `
-            font-size: 12px;
-            line-height: 20px;
-            background: white;
-            border-radius: 6px;
-            padding: 4px 8px;
-            transition: background-color 0.3s ease;
-          `;
-          button.onmouseover = () => {
-            button.style.backgroundColor = '#f0f0f0';
-          };
-          button.onmouseout = () => {
-            button.style.backgroundColor = 'white';
-          };
-          return button;
-        };
-
-        /* 
-                const addToChatButton = createButton('Add to chat (⌘+k)', () => {
-                  const selection = getSelection(editor);
-                  setChat(prevChat => [...prevChat, selection]);
-                }); */
-
-        const explainCodeButton = createButton('Edit', () => {
-          editor.changeViewZones(function (changeAccessor) {
-            if (viewZoneId !== null) {
-              changeAccessor.removeZone(viewZoneId);
-            }
-            var domNode = document.createElement("div");
-            const id = changeAccessor.addZone({
-              afterLineNumber: editor.getSelection().startLineNumber - 1,
-              heightInLines: 4,
-              domNode: domNode,
-            });
-            viewZoneId = id;
-          });
-          editor.addContentWidget({
-            allowEditorOverflow: true,
-            getDomNode: () => {
-              if (document.getElementById('editor_widget_container_2')) {
-                return document.getElementById('editor_widget_container_2');
-              }
-              const container = document.createElement('form');
-              container.id = 'editor_widget_container_2';
-              container.style.cssText = `
-              display:flex;
-              border: 1px solid #d5d5d5;
-              background-color: white;
-              border-radius: 6px;
-              width: 320px;
-              padding: 4px;
-              `
-              container.style.display = 'flex';
-              container.style.gap = '5px';
-
-              const input = document.createElement('input');
-              input.type = 'text';
-              input.placeholder = 'Enter your prompt';
-              input.style.cssText = `
-                flex: 1;
-                font-size: 12px;
-                height: 30px;
-                width: 100%;
-                border-radius: 6px;
-                padding: 2px 4px;
-              `;
-              const button2 = document.createElement('button');
-              button2.innerHTML = 'Generate';
-              button2.type = "submit"
-              button2.style.cssText = `
-                margin-top: 4px;
-                background-color: #FF694A;
-                color: white;
-                font-size: 12px;
-                line-height: 20px;
-                border-radius: 6px;
-                padding: 2px 8px;
-                transition: background-color 0.3s ease;
-              `;
-              const handleSubmit = async (event) => {
-                event.preventDefault();
-                const button = event.target.querySelector('button');
-                button.disabled = true;
-                button.innerHTML = 'Generating...';
-                button.style.backgroundColor = '#cccccc';
-
-                const promptText = input.value.trim();
-                if (promptText) {
-                  const selection = getSelection(editor);
-                  const selectionRange = editor.getSelection(); // Get selection range
-
-                  const startLine = selectionRange.startLineNumber; // Start line number
-                  const endLine = selectionRange.endLineNumber; // End line number
-                  const { prefix, suffix } = getCodeAboveAndBelow(editor, startLine, endLine);
-                  const { text } = await getEditAnswer({
-                    prefix: prefix,
-                    suffix: suffix,
-                    selection: selection,
-                    promptText: promptText
-                  });
-                  setGenCode(text);
-                  setSuffixAndPrefix({
-                    suffix: suffix,
-                    prefix: prefix
-                  })
-                  console.log(text)
-                } else {
-                  console.log('Please enter a prompt before generating');
-                }
-              };
-              button2.onmouseover = () => {
-                button2.style.backgroundColor = '#FF4A2C';
-              };
-              button2.onmouseout = () => {
-                button2.style.backgroundColor = '#FF694A';
-              };
-
-              container.onsubmit = handleSubmit;
-
-              container.appendChild(input);
-              container.appendChild(button2);
-
-              return container;
-            },
-            getId: () => 'editPrompt',
-            getPosition: () => ({
-              position: { column: 1, lineNumber: editor.getSelection().startLineNumber }, // Use the current cursor position
-              preference: [1, 2]
-            })
-          });
-        });
-
-        container.appendChild(explainCodeButton);
-
-        return container;
-      },
-      getId: () => 'selectionwidget',
-      getPosition: () => ({
-        position: {
-          lineNumber: position.positionLineNumber,
-          column: position.positionColumn
-        },
-        preference: [1, 2]
-      })
-    });
   };
 
 
