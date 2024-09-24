@@ -1,7 +1,14 @@
+import { DiffEditor } from '@monaco-editor/react';
 import React, { useState, useRef } from 'react';
-import MonacoEditor from 'react-monaco-editor';
+import MonacoEditor, { MonacoDiffEditor } from 'react-monaco-editor';
+import { Button } from './button';
+import { openai } from '@ai-sdk/openai';
+import { getAnswer } from '@/app/generateAnswer';
+import { getCodeAboveAndBelow } from '@/lib/splitCodeFile';
 
-export const CodeEditor = ({chat, setChat}) => {
+export const CodeEditor = ({ chat, setChat, editedCode, setEditedCode }) => {
+
+
   const [code, setCode] = useState(`
  {{
   config(
@@ -56,6 +63,12 @@ select * from final
    
     
     `);
+
+  const [genCode, setGenCode] = useState("")
+  const [suffixAndPrefix, setSuffixAndPrefix] = useState({
+    suffix: "",
+    prefix: ""
+  })
   const editorRef = useRef(null);
 
   const onChange = (newValue) => {
@@ -91,7 +104,7 @@ select * from final
         }
         const container = document.createElement('div');
         container.id = 'editor_widget_container';
-        container.style.cssText= `
+        container.style.cssText = `
         display:flex;
         border: 1px solid #d5d5d5;
         border-radius: 6px;
@@ -134,7 +147,7 @@ select * from final
               }
               const container = document.createElement('div');
               container.id = 'editor_widget_container_2';
-              container.style.cssText= `
+              container.style.cssText = `
               display:flex;
               border: 1px solid #d5d5d5;
               background-color: white;
@@ -142,7 +155,7 @@ select * from final
               `
               container.style.display = 'flex';
               container.style.gap = '5px';
-              
+
               const input = document.createElement('input');
               input.type = 'text';
               input.placeholder = 'Enter your prompt';
@@ -154,9 +167,8 @@ select * from final
                               border-radius: 6px;
                 padding: 2px 4px;
               `;
-
-              const button2 =document.createElement('button');
-              button2.innerHTML = 'Generate ';
+              const button2 = document.createElement('button');
+              button2.innerHTML = 'Generate';
               button2.style.cssText = `
                 font-size: 12px;
                 line-height: 20px;
@@ -165,6 +177,39 @@ select * from final
                 padding: 1px 4px;
                 transition: background-color 0.3s ease;
               `;
+              button2.onclick = async () => {
+                const promptText = input.value.trim();
+                if (promptText) {
+                  const selection = getSelection(editor);
+                  const selectionRange = editor.getSelection(); // Get selection range
+
+                  const startLine = selectionRange.startLineNumber; // Start line number
+                  const endLine = selectionRange.endLineNumber; // End line number
+
+
+
+                  const { prefix, suffix } = getCodeAboveAndBelow(editor, startLine, endLine);
+
+                  console.log('here')
+
+
+                  console.log(prompt)
+                  const { text } = await getAnswer({
+                    prefix: prefix,
+                    suffix: suffix,
+                    selection: selection,
+                    promptText: promptText
+                  });
+                  setGenCode(text);
+                  setSuffixAndPrefix({
+                    suffix: suffix,
+                    prefix: prefix
+                  })
+                  console.log(text)
+                } else {
+                  console.log('Please enter a prompt before generating');
+                }
+              };
               button2.onmouseover = () => {
                 button2.style.backgroundColor = '#f0f0f0';
               };
@@ -172,7 +217,7 @@ select * from final
                 button2.style.backgroundColor = 'white';
               };
 
-      
+
               container.appendChild(input);
               container.appendChild(button2);
 
@@ -180,7 +225,7 @@ select * from final
             },
             getId: () => 'editor.author.avatar.widget',
             getPosition: () => ({
-              position: position,
+              position: editor.getPosition(), // Use the current cursor position
               preference: [1, 2]
             })
           });
@@ -209,16 +254,28 @@ select * from final
     minimap: { enabled: false }, // Disable minimap for cleaner look
     scrollBeyondLastLine: false, // Prevents scrolling beyond the last line
   };
-  
+
   return (
-    <MonacoEditor
-      width="800px"
-      language="sql"
-      value={code}
-      options={options}
-      onChange={onChange}
-      editorDidMount={editorDidMount}
-      theme={"vs-light"}
-    />
+    <>
+      {genCode.length > 1 ?
+        <>
+          <DiffEditor
+            original={code}
+            modified={suffixAndPrefix.prefix + '\n' + genCode + '\n' + suffixAndPrefix.suffix}
+            options={{ renderSideBySide: false }}
+          />
+          <Button size="sm" variant={"ghost"} className='absolute top-4 right-4' onClick={() => {
+            setEditedCode("")
+          }}> reject</Button>
+        </> : <MonacoEditor
+          width="1264px"
+          language="sql"
+          value={code}
+          options={options}
+          onChange={onChange}
+          editorDidMount={editorDidMount}
+          theme={"vs-light"}
+        />}
+    </>
   );
 };
