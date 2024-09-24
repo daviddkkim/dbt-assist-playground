@@ -124,12 +124,6 @@ select * from final
                 return button;
               };
 
-              /* 
-                      const addToChatButton = createButton('Add to chat (⌘+k)', () => {
-                        const selection = getSelection(editor);
-                        setChat(prevChat => [...prevChat, selection]);
-                      }); */
-
               const explainCodeButton = createButton('Generate', () => {
                 editor.changeViewZones(function (changeAccessor) {
                   if (viewZoneId !== null) {
@@ -149,16 +143,16 @@ select * from final
                     if (document.getElementById('editor_widget_container_2')) {
                       return document.getElementById('editor_widget_container_2');
                     }
-                    const container = document.createElement('div');
+                    const container = document.createElement('form');
                     container.id = 'editor_widget_container_2';
                     container.style.cssText = `
-                  display:flex;
-                  border: 1px solid #d5d5d5;
-                  background-color: white;
-                  border-radius: 6px;
-                  width: 320px;
-                  padding: 4px;
-                  `
+              display:flex;
+              border: 1px solid #d5d5d5;
+              background-color: white;
+              border-radius: 6px;
+              width: 320px;
+              padding: 4px;
+              `
                     container.style.display = 'flex';
                     container.style.gap = '5px';
 
@@ -166,26 +160,33 @@ select * from final
                     input.type = 'text';
                     input.placeholder = 'Enter your prompt';
                     input.style.cssText = `
-                    flex: 1;
-                    font-size: 12px;
-                    height: 30px;
-                    width: 100%;
-                    border-radius: 6px;
-                    padding: 2px 4px;
-                  `;
+                flex: 1;
+                font-size: 12px;
+                height: 30px;
+                width: 100%;
+                border-radius: 6px;
+                padding: 2px 4px;
+              `;
                     const button2 = document.createElement('button');
                     button2.innerHTML = 'Generate';
+                    button2.type = "submit"
                     button2.style.cssText = `
-                    margin-top: 4px;
-                    background-color: #FF694A;
-                    color: white;
-                    font-size: 12px;
-                    line-height: 20px;
-                    border-radius: 6px;
-                    padding: 2px 8px;
-                    transition: background-color 0.3s ease;
-                  `;
-                    button2.onclick = async () => {
+                margin-top: 4px;
+                background-color: #FF694A;
+                color: white;
+                font-size: 12px;
+                line-height: 20px;
+                border-radius: 6px;
+                padding: 2px 8px;
+                transition: background-color 0.3s ease;
+              `;
+                    const handleSubmit = async (event) => {
+                      event.preventDefault();
+                      const button = event.target.querySelector('button');
+                      button.disabled = true;
+                      button.innerHTML = 'Generating...';
+                      button.style.backgroundColor = '#cccccc';
+
                       const promptText = input.value.trim();
                       if (promptText) {
                         const selectionRange = editor.getSelection(); // Get selection range
@@ -215,6 +216,7 @@ select * from final
                       button2.style.backgroundColor = '#FF694A';
                     };
 
+                    container.onsubmit = handleSubmit;
 
                     container.appendChild(input);
                     container.appendChild(button2);
@@ -235,7 +237,7 @@ select * from final
             },
             getId: () => 'inlineGen',
             getPosition: () => ({
-              position: { column: 1, lineNumber: position.lineNumber+1 }, // Use the current cursor position
+              position: { column: 1, lineNumber: position.lineNumber + 1 }, // Use the current cursor position
               preference: [1, 2]
             })
 
@@ -323,7 +325,7 @@ select * from final
               if (document.getElementById('editor_widget_container_2')) {
                 return document.getElementById('editor_widget_container_2');
               }
-              const container = document.createElement('div');
+              const container = document.createElement('form');
               container.id = 'editor_widget_container_2';
               container.style.cssText = `
               display:flex;
@@ -349,6 +351,7 @@ select * from final
               `;
               const button2 = document.createElement('button');
               button2.innerHTML = 'Generate';
+              button2.type = "submit"
               button2.style.cssText = `
                 margin-top: 4px;
                 background-color: #FF694A;
@@ -359,7 +362,13 @@ select * from final
                 padding: 2px 8px;
                 transition: background-color 0.3s ease;
               `;
-              button2.onclick = async () => {
+              const handleSubmit = async (event) => {
+                event.preventDefault();
+                const button = event.target.querySelector('button');
+                button.disabled = true;
+                button.innerHTML = 'Generating...';
+                button.style.backgroundColor = '#cccccc';
+
                 const promptText = input.value.trim();
                 if (promptText) {
                   const selection = getSelection(editor);
@@ -391,6 +400,7 @@ select * from final
                 button2.style.backgroundColor = '#FF694A';
               };
 
+              container.onsubmit = handleSubmit;
 
               container.appendChild(input);
               container.appendChild(button2);
